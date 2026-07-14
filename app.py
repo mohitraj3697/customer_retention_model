@@ -3,24 +3,24 @@ import pickle
 import random
 
 import numpy as np
+import onnxruntime as ort
 import pandas as pd
 import streamlit as st
-from tensorflow.keras.models import load_model
 
 st.set_page_config(page_title="Customer Churn Predictor", page_icon="📉", layout="centered")
 
 
 @st.cache_resource
 def load_artifacts():
-    model = load_model("churn_model.keras")
+    session = ort.InferenceSession("churn_model.onnx")
     with open("scaler.pkl", "rb") as f:
         scaler = pickle.load(f)
     with open("feature_columns.pkl", "rb") as f:
         feature_columns = pickle.load(f)
-    return model, scaler, feature_columns
+    return session, scaler, feature_columns
 
 
-model, scaler, feature_columns = load_artifacts()
+session, scaler, feature_columns = load_artifacts()
 
 # --- Defaults (used on first load) ---
 GEOGRAPHIES = ["France", "Germany", "Spain"]
@@ -109,8 +109,9 @@ if st.button("Predict Churn", type="primary"):
     # Ensure column order exactly matches training
     raw = raw[feature_columns]
 
-    scaled = scaler.transform(raw)
-    prob = float(model.predict(scaled, verbose=0)[0][0])
+    scaled = scaler.transform(raw).astype(np.float32)
+    input_name = session.get_inputs()[0].name
+    prob = float(session.run(None, {input_name: scaled})[0][0][0])
 
     st.divider()
     st.metric("Churn Probability", f"{prob:.1%}")

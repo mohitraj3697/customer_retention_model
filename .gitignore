@@ -21,3 +21,7 @@ venv/
 # OS
 .DS_Store
 Thumbs.db
+
+# Conversion utilities
+convert_to_onnx.py
+saved_model_tmp/
